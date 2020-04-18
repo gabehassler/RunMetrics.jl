@@ -1,6 +1,4 @@
 using RunMetrics
-using Test
+using Test, SafeTestsets
 
-@testset "RunMetrics.jl" begin
-    # Write your own tests here.
-end
+@time @safetestset "TCX Parser Tests" begin include("test_tcx_parser.jl") end

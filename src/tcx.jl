@@ -195,5 +195,4 @@ function make_diff_df(df::DataFrame)
     end
 
     return diff_df
-
 end
