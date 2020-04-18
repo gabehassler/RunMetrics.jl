@@ -123,7 +123,7 @@ function parse_tcx(path::String)
 
 
     rs = RunSummary(n)
-    rs.time[1] = df.distance[1] / df.speed[1]
+    rs.time[1] = round(df.distance[1] / df.speed[1])
     rs.dist[1] = df.distance[1]
     rs.alt[1] = 0.0
     rs.hr[1] = df.hr[1]
