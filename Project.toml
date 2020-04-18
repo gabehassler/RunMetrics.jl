@@ -3,6 +3,11 @@ uuid = "1dcf82ae-d254-494c-824a-619877f6e3fd"
 authors = ["Gabe Hassler <gabriel.w.hassler@gmail.com>"]
 version = "0.1.0"
 
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
+TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
+
 [compat]
 julia = "1"
 
