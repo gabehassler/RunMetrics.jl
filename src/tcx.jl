@@ -1,10 +1,7 @@
 using LightXML, TimeZones, DataFrames
 
 export parse_tcx
-export running_sum
-# export geo_dist
 export parse_laps
-export make_diff_df
 
 struct Trackpoint
     dt::ZonedDateTime
@@ -125,30 +122,22 @@ function parse_tcx(path::String)
     end
 
 
-    return df
-end
+    rs = RunSummary(n)
+    rs.time[1] = df.distance[1] / df.speed[1]
+    rs.dist[1] = df.distance[1]
+    rs.alt[1] = 0.0
+    rs.hr[1] = df.hr[1]
 
 
+    for i = 2:n
 
-function running_sum(df::DataFrame; delay = 20)
-    speed = df.speed
-
-    n = length(speed)
-    avg_speed = zeros(n)
-
-    sum = 0.0
-    for i = 1:delay
-        sum += speed[i]
-        avg_speed[i] = sum / delay
+        rs.time[i] = (df.time[i] - df.time[i - 1]).value / 1e3 # time stored in milliseconds
+        rs.alt[i] = df.altitude[i] - df.altitude[i - 1]
+        rs.dist[i] = geo_dist(df.pos[i], df.pos[i - 1])
+        rs.hr[i] = df.hr[i]
     end
 
-    for i = (delay + 1):n
-        sum -= speed[i - delay]
-        sum += speed[i]
-        avg_speed[i] = sum / delay
-    end
-
-    return avg_speed
+    return rs
 end
 
 
@@ -168,31 +157,4 @@ function geo_dist(p1::Tuple{Float64, Float64}, p2::Tuple{Float64, Float64})
 
 
     return radius * sqrt(dlat^2 + (cmlat * dlong)^2)
-end
-
-function make_diff_df(df::DataFrame)
-    n = size(df, 1)
-    m = n - 1
-
-    rownames = [:secs_time,
-                :secs_speed,
-                :v_meters,
-                :h_meters_dist,
-                :h_meters_pos,
-                :hr]
-
-    p = length(rownames)
-
-    diff_df = DataFrame(zeros(m, p), rownames)
-
-    for i = 1:m
-        diff_df.secs_time[i] = (df.time[i + 1] - df.time[i]).value / 1e3 # time stored in milliseconds
-        diff_df.v_meters[i] = df.altitude[i + 1] - df.altitude[i]
-        diff_df.h_meters_dist[i] = df.distance[i + 1] - df.distance[i]
-        diff_df.h_meters_pos[i] = geo_dist(df.pos[i + 1], df.pos[i])
-        diff_df.secs_speed[i] = diff_df.h_meters_dist[i] / df.speed[i + 1]
-        diff_df.hr[i] = df.hr[i + 1]
-    end
-
-    return diff_df
 end
