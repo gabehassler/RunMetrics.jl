@@ -7,8 +7,8 @@ struct RunSummary
     hr::Vector{Float64}
     unit_time::Bool
 
-    function RunSummary(n::Int)
-        return new(nan_vec(n), nan_vec(n), nan_vec(n), nan_vec(n), false)
+    function RunSummary(n::Int; unit_time::Bool = false)
+        return new(nan_vec(n), nan_vec(n), nan_vec(n), nan_vec(n), unit_time)
     end
 
 end
@@ -19,6 +19,8 @@ function nan_vec(n::Int)
     return v
 end
 
+
+import Base.length
 function length(rs::RunSummary)
     return length(rs.time)
 end
@@ -31,10 +33,9 @@ end
 # end
 
 function unit_run_sum(rs::RunSummary; unit_time = 1.0)
-    n = Int(round(sum(rs.time))) + 1 # start at 0 so add 1
+    n = Int(round(sum(rs.time)))
 
-    unit_rs = RunSummary(n)
-    unit_rs.unit_time = true
+    unit_rs = RunSummary(n, unit_time = true)
 
     m = length(rs)
 
@@ -45,6 +46,7 @@ function unit_run_sum(rs::RunSummary; unit_time = 1.0)
     old_unit_dist = 0.0
     old_hr = rs.hr[1]
     old_alt = rs.alt[1]
+    old_unit_Δhr = 0.0
 
     for i = 1:m
         t = rs.time[i] + res_time
@@ -57,14 +59,15 @@ function unit_run_sum(rs::RunSummary; unit_time = 1.0)
 
         unit_dist = rs.dist[i] / rs.time[i]
         unit_alt = rs.alt[i] / rs.time[i]
+        unit_Δhr = (rs.hr[i] - old_hr) / rs.time[i]
 
         α = res_time / unit_time
         β = unit_time - α
 
         unit_rs.time[ind] = unit_time
         unit_rs.dist[ind] = α * old_unit_dist + β * unit_dist
-        unit_rs.hr[ind] = α * old_hr + β * rs.hr[i]
-        unit_rs.alt[ind] = α * old_alt + β * rs.alt[i]
+        unit_rs.hr[ind] = old_hr + α * old_unit_Δhr + β * unit_Δhr
+        unit_rs.alt[ind] = α * old_alt + β * unit_alt
 
         ind += 1
 
@@ -73,7 +76,7 @@ function unit_run_sum(rs::RunSummary; unit_time = 1.0)
         while t >= 1.0
             unit_rs.time[ind] = unit_time
             unit_rs.dist[ind] = unit_dist
-            unit_rs.hr[ind] = rs.hr[i]
+            unit_rs.hr[ind] = unit_rs.hr[ind - 1] + unit_Δhr
             unit_rs.alt[ind] = unit_alt
 
             ind += 1
@@ -82,8 +85,11 @@ function unit_run_sum(rs::RunSummary; unit_time = 1.0)
 
         res_time = t
         old_unit_dist = unit_dist
-        old_hr = rs.hr[i]
+        old_hr = unit_rs.hr[ind - 1]
+        unit_rs.hr[ind - 1]
         old_alt = unit_alt
 
     end
+
+    return unit_rs
 end
