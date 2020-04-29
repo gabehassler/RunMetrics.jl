@@ -5,7 +5,7 @@ cd(@__DIR__)
 sample_data = joinpath("..", "sample_data", "sample.tcx")
 
 rs = parse_tcx(sample_data)
-n = size(df, 1)
+n = length(rs)
 
 @test n == 946
 

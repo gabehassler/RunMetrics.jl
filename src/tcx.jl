@@ -121,8 +121,11 @@ function parse_tcx(path::String)
         end
     end
 
+    # Activity ID is same as start time
+    start_time = ZonedDateTime(content(find_element(activity, "Id")))
 
-    rs = RunSummary(n)
+
+    rs = RunSummary(n, start_time)
     rs.time[1] = round(df.distance[1] / df.speed[1])
     rs.dist[1] = df.distance[1]
     rs.alt[1] = 0.0

@@ -1,14 +1,17 @@
 export RunSummary
 
+using TimeZones
+
 struct RunSummary
     time::Vector{Float64} # seconds
     dist::Vector{Float64}
     alt::Vector{Float64}
     hr::Vector{Float64}
     unit_time::Bool
+    start_time::ZonedDateTime
 
-    function RunSummary(n::Int; unit_time::Bool = false)
-        return new(nan_vec(n), nan_vec(n), nan_vec(n), nan_vec(n), unit_time)
+    function RunSummary(n::Int, time::ZonedDateTime; unit_time::Bool = false)
+        return new(nan_vec(n), nan_vec(n), nan_vec(n), nan_vec(n), unit_time, time)
     end
 
 end
