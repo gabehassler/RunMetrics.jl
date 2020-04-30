@@ -1,3 +1,5 @@
+const DEBUG = true
+
 function make_design(rs::RunSummary, lag::Float64)
     if !rs.unit_time
         rs = unit_run_sum(rs)
@@ -63,7 +65,8 @@ function count_covs()
 end
 
 function multi_regress(summaries::Vector{RunSummary}, lag::Float64)
-    p_base = count_covs()
+    n_cov = count_covs()
+    p_base = n_cov
     p_total = p_base + length(summaries)
 
     XtX = zeros(p_total, p_total)
@@ -72,8 +75,14 @@ function multi_regress(summaries::Vector{RunSummary}, lag::Float64)
     n = length(summaries)
 
     t_unit = 0.0
+    act_rng = 1:n_cov
+
 
     for i = 1:n
+        if DEBUG
+            println("Starting $i of $n")
+        end
+
         rs = summaries[i]
         if !rs.unit_time
             rs = unit_run_sum(rs)
@@ -82,27 +91,27 @@ function multi_regress(summaries::Vector{RunSummary}, lag::Float64)
         if i == 1
             t_unit = rs.time[1]
         else
-            @assert rs.time[1] == unit
+            @assert rs.time[1] == t_unit
         end
 
         X = make_design(rs, lag)
 
-        act_start = p_base * i + 1
-        act_end = act_start + p_base - 1
-        act_rng = act_start:act_end
         design_ind = p_base + i
 
         #TODO: make below memory efficient
-        XtX[1:p_base, 1:p_total] .+= X' * X
-        sum_X = sum(X, dims=1)
+        XtX[1:p_base, 1:p_base] .+= X' * X
+        sum_X = vec(sum(X, dims=1))
+
         XtX[act_rng, design_ind] .= sum_X
         XtX[design_ind, act_rng] .= sum_X
+        XtX[design_ind, design_ind] = Float64(length(rs))
 
         Xty[1:p_base] .+= X' * rs.hr
         Xty[design_ind] = sum(rs.hr) #TODO: can get this from intercept of Xty?
+        @show design_ind
 
     end
 
-    return XtX \ Xty
-    
+    return XtX, Xty
+
 end
