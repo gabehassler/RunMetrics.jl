@@ -15,7 +15,7 @@ function make_design(rs::RunSummary, lag::Float64)
 
     n = length(rs)
 
-    X = zeros(n, 3) # intercept, distance, altitude
+    X = zeros(n, count_covs()) # intercept, distance, altitude
     X[:, 1] .= 1.0
 
     current_dist = 0.0
@@ -55,4 +55,54 @@ function regress(y::Vector{Float64}, X::Matrix{Float64})
     ssr = res' * res
 
     return β, ssr
+end
+
+function count_covs()
+    return 3 #TODO: need a better way to specify covariates in the model
+                # currently uses only speed and altitude
+end
+
+function multi_regress(summaries::Vector{RunSummary}, lag::Float64)
+    p_base = count_covs()
+    p_total = p_base + length(summaries)
+
+    XtX = zeros(p_total, p_total)
+    Xty = zeros(p_total)
+
+    n = length(summaries)
+
+    t_unit = 0.0
+
+    for i = 1:n
+        rs = summaries[i]
+        if !rs.unit_time
+            rs = unit_run_sum(rs)
+        end
+
+        if i == 1
+            t_unit = rs.time[1]
+        else
+            @assert rs.time[1] == unit
+        end
+
+        X = make_design(rs, lag)
+
+        act_start = p_base * i + 1
+        act_end = act_start + p_base - 1
+        act_rng = act_start:act_end
+        design_ind = p_base + i
+
+        #TODO: make below memory efficient
+        XtX[1:p_base, 1:p_total] .+= X' * X
+        sum_X = sum(X, dims=1)
+        XtX[act_rng, design_ind] .= sum_X
+        XtX[design_ind, act_rng] .= sum_X
+
+        Xty[1:p_base] .+= X' * rs.hr
+        Xty[design_ind] = sum(rs.hr) #TODO: can get this from intercept of Xty?
+
+    end
+
+    return XtX \ Xty
+    
 end
