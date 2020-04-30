@@ -1,9 +1,9 @@
 using LightXML, TimeZones, DataFrames
 
-export parse_tcx
+export parse_run, isrun
 export parse_laps
 
-struct Trackpoint
+mutable struct Trackpoint
     dt::ZonedDateTime
     distance::Float64
     altitude::Float64
@@ -17,7 +17,11 @@ function parse_trackpoint(tp::XMLElement)
     dt = ZonedDateTime(content(find_element(tp, "Time")))
     distance = parse(Float64, content(find_element(tp, "DistanceMeters")))
     altitude = parse(Float64, content(find_element(tp, "AltitudeMeters")))
-    hr = parse(Float64, content(find_element(tp, "HeartRateBpm")))
+    hr_el = find_element(tp, "HeartRateBpm")
+    hr = NaN
+    if !isnothing(hr_el)
+        hr = parse(Float64, content(hr_el))
+    end
     ext_el = find_element(tp, "Extensions")
     n3_el = find_element(ext_el, "TPX")
     speed_el = find_element(n3_el, "Speed")
@@ -86,7 +90,7 @@ function parse_laps(path::String)
     return df
 end
 
-function parse_tcx(path::String)
+function parse_run(path::String)
 
     activity = get_activity(path)
 
@@ -109,6 +113,9 @@ function parse_tcx(path::String)
             for tp_el in track["Trackpoint"]
                 counter += 1
                 tp = parse_trackpoint(tp_el)
+                if isnan(tp.hr)
+                    tp.hr = df.hr[counter - 1] # TODO: handle missing data better
+                end
 
                 df.time[counter] = tp.dt
                 df.distance[counter] = tp.distance
@@ -126,7 +133,21 @@ function parse_tcx(path::String)
 
 
     rs = RunSummary(n, start_time)
-    rs.time[1] = round(df.distance[1] / df.speed[1])
+    init_speed = df.speed[1]
+
+    #sometimes initial speed is zero
+    if init_speed  == 0.0
+        ind = 2
+        while init_speed == 0.0
+            init_speed = df.speed[ind]
+            ind += 1
+        end
+
+    end
+
+    rs.time[1] = round(df.distance[1] / init_speed) #should I just assume first tp is start???
+
+
     rs.dist[1] = df.distance[1]
     rs.alt[1] = 0.0
     rs.hr[1] = df.hr[1]
@@ -160,4 +181,10 @@ function geo_dist(p1::Tuple{Float64, Float64}, p2::Tuple{Float64, Float64})
 
 
     return radius * sqrt(dlat^2 + (cmlat * dlong)^2)
+end
+
+function isrun(path::String)
+    activity = get_activity(path)
+
+    return attribute(activity, "Sport") == "Running"
 end

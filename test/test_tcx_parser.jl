@@ -4,7 +4,7 @@ cd(@__DIR__)
 
 sample_data = joinpath("..", "sample_data", "sample.tcx")
 
-rs = parse_tcx(sample_data)
+rs = parse_run(sample_data)
 n = length(rs)
 
 @test n == 946

@@ -6,7 +6,7 @@ tol = 1e-10
 
 sample_data = joinpath("..", "sample_data", "sample.tcx")
 
-rs = parse_tcx(sample_data)
+rs = parse_run(sample_data)
 urs = RunMetrics.unit_run_sum(rs)
 
 rt = sum(rs.time)
