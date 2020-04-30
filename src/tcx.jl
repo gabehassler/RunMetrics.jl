@@ -90,7 +90,7 @@ function parse_tcx(path::String)
 
     activity = get_activity(path)
 
-    @assert attribute(activity, "Sport") == "Running"
+    @assert attribute(activity, "Sport") == "Running" # TODO: handle other sports
 
 
     n = count_points(activity)
