@@ -18,24 +18,24 @@ function make_design(rs::RunSummary, lag::Float64)
     n = length(rs)
 
     X = zeros(n, count_covs()) # intercept, distance, altitude
-    X[:, 1] .= 1.0
+    # X[:, 1] .= 1.0
 
     current_dist = 0.0
     current_alt = 0.0
 
-    for i = 1:n_lag
+    for i = 1:minimum([n_lag, n])
         current_dist += rs.dist[i]
         current_alt += rs.alt[i]
-        X[i, 2] = current_dist * inv_lag
-        X[i, 3] = current_alt * inv_lag
+        X[i, 1] = current_dist * inv_lag
+        X[i, 2] = current_alt * inv_lag
     end
 
     for i = (n_lag + 1):n
         current_dist += rs.dist[i] - rs.dist[i - n_lag]
         current_alt += rs.alt[i] - rs.alt[i - n_lag]
 
-        X[i, 2] = current_dist * inv_lag
-        X[i, 3] = current_alt * inv_lag
+        X[i, 1] = current_dist * inv_lag
+        X[i, 2] = current_alt * inv_lag
     end
 
     return X
@@ -60,7 +60,7 @@ function regress(y::Vector{Float64}, X::Matrix{Float64})
 end
 
 function count_covs()
-    return 3 #TODO: need a better way to specify covariates in the model
+    return 2 #TODO: need a better way to specify covariates in the model
                 # currently uses only speed and altitude
 end
 
@@ -108,10 +108,9 @@ function multi_regress(summaries::Vector{RunSummary}, lag::Float64)
 
         Xty[1:p_base] .+= X' * rs.hr
         Xty[design_ind] = sum(rs.hr) #TODO: can get this from intercept of Xty?
-        @show design_ind
 
     end
 
-    return XtX, Xty
+    return XtX \ Xty
 
 end
