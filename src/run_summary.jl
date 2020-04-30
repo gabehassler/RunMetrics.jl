@@ -38,7 +38,7 @@ end
 function unit_run_sum(rs::RunSummary; unit_time = 1.0)
     n = Int(round(sum(rs.time)))
 
-    unit_rs = RunSummary(n, unit_time = true)
+    unit_rs = RunSummary(n, rs.start_time, unit_time = true)
 
     m = length(rs)
 
