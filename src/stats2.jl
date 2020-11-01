@@ -21,10 +21,15 @@ function covariate_dimension()
     return 2
 end
 
-function
 
 # function speed_col()
 #     return
+function exponential_decay(rs::RunSummary, α::Float64; initial_value::Float64 = 0.0)
+    n = length(rs)
+    val = initial_value
+
+
+end
 
 
 function design_mat(run_sums::Array{RunSummary}, α::Float64;
@@ -35,9 +40,8 @@ function design_mat(run_sums::Array{RunSummary}, α::Float64;
 
     n_covars = covariate_dimension()
 
-    X = zeros(n, n_covars + n_runs + 1)
+    X = zeros(n, n_covars + n_runs)
     y = zeros(n)
-    X[:, 1] .= 1.0
 
     offset = 0
     for i = 1:n_runs
@@ -54,19 +58,18 @@ function design_mat(run_sums::Array{RunSummary}, α::Float64;
 
         current_speed_sum = 0.0
         current_climb_sum = 0.0
-        current_t = 0.0
 
-        date_ind = i + n_covars + 1
+        date_ind = i + n_covars
 
         for j = 1:ns[i]
             row_ind = j + offset
-            t_diff = rs.time[j] - current_t
+            t_diff = rs.time[j]
+
             decay = exp(-α * t_diff)
-            X[row_ind, 1] = 1.0 # intercept
             current_speed_sum = speed[j] + current_speed_sum * decay
             current_climb_sum = climb[j] + current_climb_sum * decay
-            X[row_ind, 2] = current_speed_sum
-            X[row_ind, 3] = current_climb_sum
+            X[row_ind, 1] = current_speed_sum
+            X[row_ind, 2] = current_climb_sum
 
             X[row_ind, date_ind] = 1.0
 
