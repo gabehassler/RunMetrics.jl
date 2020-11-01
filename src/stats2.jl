@@ -24,12 +24,54 @@ end
 
 # function speed_col()
 #     return
-function exponential_decay(rs::RunSummary, α::Float64; initial_value::Float64 = 0.0)
+function exponential_decay(rs::RunSummary, raw::AbstractArray{Float64, 1},
+                           α::Float64;
+                           initial_value::Float64 = 0.0,
+                           x::AbstractArray{Float64, 1} = zeros(length(rs)))
     n = length(rs)
+    @assert length(x) == n
+
     val = initial_value
 
+    for i = 1:n
+        val = exp(-α * rs.time[i]) * val + raw[i]
+        x[i] = val
+    end
 
+    return x
 end
+
+function sliding_scale(rs::RunSummary, raw::AbstractArray{Float64, 1},
+                        window::Float64;
+                        initial_value::Float64 = 0.0,
+                        x::AbstractArray{Float64, 1} = zeros(length(rs)))
+
+    @assert rs.unit_time
+
+    t_unit = rs.time[1]
+    m = Int(round(window / t_unit))
+    new_window = m * t_unit
+
+    n = length(rs)
+    @assert length(x) == n
+
+    val = initial_value
+
+    for i = 1:m
+        val += raw[i]
+        x[i] = val
+    end
+    for i = (m + 1):n
+        val += raw[i] - raw[i - m]
+        x[i] = val
+    end
+
+    x ./= new_window
+
+    return x
+end
+
+
 
 
 function design_mat(run_sums::Array{RunSummary}, α::Float64;
@@ -56,25 +98,19 @@ function design_mat(run_sums::Array{RunSummary}, α::Float64;
         # @show findall(isnan, speed)
         # @show findall(isnan, climb)
 
-        current_speed_sum = 0.0
-        current_climb_sum = 0.0
+        run_rng = (offset + 1):(offset + ns[i])
+
+        speed_decay = @view X[run_rng, 1]
+        climb_decay = @view X[run_rng, 2]
+
+
+
+        exponential_decay(rs, speed, α, x = speed_decay)
+        exponential_decay(rs, climb, α, x = climb_decay)
 
         date_ind = i + n_covars
-
-        for j = 1:ns[i]
-            row_ind = j + offset
-            t_diff = rs.time[j]
-
-            decay = exp(-α * t_diff)
-            current_speed_sum = speed[j] + current_speed_sum * decay
-            current_climb_sum = climb[j] + current_climb_sum * decay
-            X[row_ind, 1] = current_speed_sum
-            X[row_ind, 2] = current_climb_sum
-
-            X[row_ind, date_ind] = 1.0
-
-            y[row_ind] = rs.hr[j]
-        end
+        X[run_rng, date_ind] .= 1.0
+        y[run_rng] .= rs.hr
 
         offset += ns[i]
     end
