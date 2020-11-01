@@ -1,6 +1,6 @@
-export RunSummary
+export RunSummary, DataFrame
 
-using TimeZones
+using TimeZones, DataFrames
 
 struct RunSummary
     time::Vector{Float64} # seconds
@@ -95,4 +95,13 @@ function unit_run_sum(rs::RunSummary; unit_time = 1.0)
     end
 
     return unit_rs
+end
+
+function RunMetrics.DataFrame(rs::RunSummary)
+    df = DataFrames.DataFrame(time = rs.time,
+                   dist = rs.dist,
+                   alt = rs.alt,
+                   hr = rs.hr,
+                   start_time = fill(rs.start_time, length(rs)))
+    return df
 end
