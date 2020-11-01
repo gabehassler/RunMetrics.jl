@@ -75,7 +75,8 @@ end
 
 
 function design_mat(run_sums::Array{RunSummary}, α::Float64;
-                    standardize::Bool = false)
+                    standardize::Bool = false,
+                    decay_function::Function = exponential_decay)
     n_runs = length(run_sums)
     ns = [length(rs) for rs in run_sums]
     n = sum(ns)
@@ -105,8 +106,8 @@ function design_mat(run_sums::Array{RunSummary}, α::Float64;
 
 
 
-        exponential_decay(rs, speed, α, x = speed_decay)
-        exponential_decay(rs, climb, α, x = climb_decay)
+        decay_function(rs, speed, α, x = speed_decay)
+        decay_function(rs, climb, α, x = climb_decay)
 
         date_ind = i + n_covars
         X[run_rng, date_ind] .= 1.0
