@@ -59,7 +59,7 @@ function sliding_scale(rs::RunSummary, raw::AbstractArray{Float64, 1},
 
     previous_raw = 0.0
     to_last = window
-    last_value = 0.0
+    last_value = initial_value
     last_ind = 0
 
     for i = 1:n
