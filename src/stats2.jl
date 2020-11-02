@@ -46,27 +46,46 @@ function sliding_scale(rs::RunSummary, raw::AbstractArray{Float64, 1},
                         initial_value::Float64 = 0.0,
                         x::AbstractArray{Float64, 1} = zeros(length(rs)))
 
-    @assert rs.unit_time
+    # @assert rs.unit_time
 
-    t_unit = rs.time[1]
-    m = Int(round(window / t_unit))
-    new_window = m * t_unit
+    # t_unit = rs.time[1]
+    # m = Int(round(window / t_unit))
+    # new_window = m * t_unit
 
     n = length(rs)
     @assert length(x) == n
 
     val = initial_value
 
-    for i = 1:m
-        val += raw[i]
-        x[i] = val
-    end
-    for i = (m + 1):n
-        val += raw[i] - raw[i - m]
+    previous_raw = 0.0
+    to_last = window
+    last_value = 0.0
+    last_ind = 0
+
+    for i = 1:n
+        if rs.time[i] > window
+            val = window * raw[i]
+            x[i] = val
+        else
+            t_pre = rs.time[i]
+            t_post = rs.time[i]
+            while to_last < t_pre
+                val -= to_last * last_value
+
+                last_ind += 1
+                last_value = raw[last_ind]
+                t_pre -= to_last
+                to_last = rs.time[last_ind]
+            end
+
+            to_last -= t_pre
+            val -= t_pre * last_value
+            val += rs.time[i] * raw[i]
+        end
         x[i] = val
     end
 
-    x ./= new_window
+    x ./= window
 
     return x
 end
