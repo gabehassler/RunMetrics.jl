@@ -102,7 +102,7 @@ function design_mat(run_sums::Array{RunSummary}, α::Float64;
 
     n_covars = covariate_dimension()
 
-    X = zeros(n, n_covars + n_runs)
+    X = zeros(n, n_covars + n_runs + 1)
     y = zeros(n)
 
     offset = 0
@@ -120,17 +120,24 @@ function design_mat(run_sums::Array{RunSummary}, α::Float64;
 
         run_rng = (offset + 1):(offset + ns[i])
 
-        speed_decay = @view X[run_rng, 1]
-        climb_decay = @view X[run_rng, 2]
+        speed_decay = @view X[run_rng, 2]
+        climb_decay = @view X[run_rng, 3]
 
 
 
         decay_function(rs, speed, α, x = speed_decay)
         decay_function(rs, climb, α, x = climb_decay)
 
-        date_ind = i + n_covars
+        date_ind = i + n_covars + 1
         X[run_rng, date_ind] .= 1.0
         y[run_rng] .= rs.hr
+
+        t = 0.0
+
+        for j = 1:ns[i]
+            t += rs.time[j]
+            X[offset + j, 1] = t
+        end
 
         offset += ns[i]
     end
