@@ -2,6 +2,7 @@
 using GZip
 
 const ACTIVITIES = "activities"
+const FINDER_JAR = joinpath(@__DIR__, "..", "artifacts", "ActivityFinder.jar") #TODO: make proper artifact
 
 function import_strava(path::String, dest_dir::String)
     mkpath(dest_dir)
@@ -25,24 +26,6 @@ function import_strava_zip(path::String, dest_dir::String)
     for file in readdir(activities_dir, join=true)
         process_file(file, dest_dir)
     end
-
-
-
-    # try
-    #     for file in r.files
-    #         sp = splitpath(file.name)
-    #         if length(sp) == 2 && sp[1] == ACTIVITIES
-    #             tmp_path = joinpath(tmp_dir, sp[2])
-    #             write(tmp_path, read(file))
-    #             process_file(tmp_path, dest_dir)
-    #             println(file.name)
-    #         end
-    #     end
-    # catch e
-    #     close(r)
-    #     @error "Could not import zip file" exception=(e, catch_backtrace())
-    # end
-    # close(r)
 end
 
 function import_garmin(path::String, dest_dir::String)
@@ -54,49 +37,34 @@ function import_garmin(path::String, dest_dir::String)
     end
 end
 
-# function import_garmin_zip(path::String, dest_dir::String)
-#     tmp_dir_zip = mktempdir()
-#     tmp_dir_fit = mktempdir()
-#     r = ZipFile.Reader(path)
-#     try
-#         for file in r.files
-#             bn = basename(file.name)
-#             if startswith(bn, "UploadedFiles") && endswith(bn, ".zip")
-#                 tmp_path = joinpath(tmp_dir_zip, bn)
-#                 write(tmp_path, file)
-#             end
-#         end
+function import_garmin_zip(path::String, dest_dir::String)
+    bn, _ = splitext(basename(path))
+    tmp_dir_fit = mktempdir()
+    tmp_dir_zip = joinpath(mktempdir(), bn)
 
-#         failed = String[]
+    unzip(path, tmp_dir_zip)
+    uploaded_dir = joinpath(tmp_dir_zip, "DI_CONNECT",
+            "DI-Connect-Fitness-Uploaded-Files")
 
+    for file in readdir(uploaded_dir, join = true)
+        _, ext = splitext(file)
+        if ext == ".zip"
+            unzip(file, tmp_dir_fit)
+        end
+    end
 
-#         for zipfile in readdir(tmp_dir_zip, join = true)
-#             r = ZipFile.Reader(zipfile)
-#             for file in r.files
-#                 if endswith(file.name, ".fit")
-#                     tmp_path = joinpath(tmp_dir_fit, basename(file.name))
-#                     try
-#                         write(tmp_path, read(file))
-#                     catch
-#                         push!(failed, file.name) # not sure why this works, but it prevents EOF error (and not just because of the catch)
-#                     end
-#                 end
-#             end
-#         end
-
-#         return failed
-
-#         cmd = Cmd(["java", "-jar", ""])
-
-
-#     catch e
-#         @error "Something went wrong" exception=(e, catch_backtrace())
-#     end
-# end
+    activity_files = find_activity_files(tmp_dir_fit)
+    for file in activity_files
+        process_file(file, dest_dir)
+    end
+end
 
 function process_file(path::String, dir::String)
     bn = basename(path)
-    if endswith(path, ".gz")
+    _, ext = splitext(bn)
+    if ext == ".fit"
+        mv(path, joinpath(dir, bn))
+    elseif ext == ".gz"
         GZip.open(path) do f
             contents = read(f)
             write(joinpath(dir, bn[1:(end - 3)]), contents)
@@ -108,10 +76,25 @@ function process_file(path::String, dir::String)
     # cp(path, joinpath(dir, basename(path)))
 end
 
+function find_activity_files(dir::String)
+
+    activity_files = joinpath(dir, "files.txt")
+
+    cmd = Cmd(["java", "-jar", FINDER_JAR, dir])
+    open(activity_files, "w") do file
+        redirect_stdout(file) do
+            run(cmd)
+        end
+    end
+
+    return(readlines(activity_files))
+end
+
+
 
 function unzip(src::String, dest::String)
     if Sys.iswindows()
-        cmd = Cmd(["PowerShell", "-Command", "Expand-Archive", "-LiteralPath", "'$src'", "'$dest'"])
+        cmd = Cmd(["PowerShell", "-Command", "Expand-Archive", "-LiteralPath", "'$src'", "-DestinationPath", "'$dest'"])
         run(cmd)
     else
         error("Not currently implemented for non-Windows machines.")
