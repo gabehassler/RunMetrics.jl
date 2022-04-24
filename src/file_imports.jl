@@ -1,4 +1,4 @@
-using ZipFile
+# using ZipFile
 using GZip
 
 const ACTIVITIES = "activities"
@@ -55,28 +55,24 @@ function import_garmin_zip(path::String, dest_dir::String)
             end
         end
 
+        failed = String[]
+
+
         for zipfile in readdir(tmp_dir_zip, join = true)
-            @show zipfile
             r = ZipFile.Reader(zipfile)
             for file in r.files
                 if endswith(file.name, ".fit")
                     tmp_path = joinpath(tmp_dir_fit, basename(file.name))
-
-                    # try
+                    try
                         write(tmp_path, read(file))
-                    # catch e
-                    #     @warn "could not unzip file " * file.name
-
-                    # end
+                    catch
+                        push!(failed, file.name) # not sure why this works, but it prevents EOF error (and not just because of the catch)
+                    end
                 end
             end
         end
 
-        tmp_dir2 = mktempdir()
-
-
-        @show tmp_dir
-        @show tmp_dir2
+        return failed
 
         cmd = Cmd(["java", "-jar", ""])
 
@@ -98,10 +94,14 @@ function process_file(path::String, dir::String)
     # cp(path, joinpath(dir, basename(path)))
 end
 
-
-activity_finder_path = joinpath(@__DIR__, "..", "artifacts", "ActivityFinder.jar")
-
-cd(@__DIR__)
-zip_path = joinpath("..", "sample_data", "garmin.zip")
-dest_dir = "test_activities"
-import_garmin(zip_path, dest_dir)
+function unzip(path::String)
+    @assert endswith(path, ".zip")
+    new_dir = path[1:(end - 4)]
+    if Sys.iswindows()
+        cmd = Cmd(["PowerShell", "-Command", "Expand-Archive", "-LiteralPath", "'$path'", "'$new_dir'"])
+        @show cmd
+        run(cmd)
+    else
+        error("Not currently implemented for non-Windows machines.")
+    end
+end
