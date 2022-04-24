@@ -1,4 +1,3 @@
-# using ZipFile
 using GZip
 
 const ACTIVITIES = "activities"
@@ -69,11 +68,9 @@ function process_file(path::String, dir::String)
             contents = read(f)
             write(joinpath(dir, bn[1:(end - 3)]), contents)
         end
-        # new_path = path[1:(end - 3)]
     else
         @warn "cannot process file $(basename(path)). Unknown file extension"
     end
-    # cp(path, joinpath(dir, basename(path)))
 end
 
 function find_activity_files(dir::String)
