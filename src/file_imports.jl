@@ -60,17 +60,29 @@ end
 
 function process_file(path::String, dir::String)
     bn = basename(path)
-    _, ext = splitext(bn)
-    if ext == ".fit"
+    this_dir = dirname(path)
+    nm, ext = splitext(bn)
+    tcx_path = joinpath(dir, "$nm.tcx")
+    if ext == ".tcx"
         mv(path, joinpath(dir, bn))
+    elseif ext == ".fit"
+        tcx_output = joinpath(this_dir, "$nm.tcx")
+        fit_to_tcx(path, tcx_output)
+        mv(tcx_output, tcx_path)
     elseif ext == ".gz"
+        new_path = joinpath(this_dir, nm)
+
         GZip.open(path) do f
             contents = read(f)
-            write(joinpath(dir, bn[1:(end - 3)]), contents)
+            write(new_path, contents)
         end
+
+        process_file(new_path, dir)
     else
         @warn "cannot process file $(basename(path)). Unknown file extension"
     end
+
+    return nothing
 end
 
 function find_activity_files(dir::String)
@@ -101,4 +113,12 @@ end
 
 function unzip(path::String)
     unzip(path, splitext(path)[1])
+end
+
+function fit_to_tcx(fit::String, tcx::String)
+    cmd_strings = ["fittotcx", fit, tcx]
+    if Sys.iswindows()
+        cmd_strings = [["cmd", "/C"]; cmd_strings]
+    end
+    run(Cmd(cmd_strings))
 end
