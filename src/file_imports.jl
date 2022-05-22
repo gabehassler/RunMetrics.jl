@@ -63,23 +63,35 @@ function process_file(path::String, dir::String)
     this_dir = dirname(path)
     nm, ext = splitext(bn)
     tcx_path = joinpath(dir, "$nm.tcx")
-    if ext == ".tcx"
-        mv(path, joinpath(dir, bn))
-    elseif ext == ".fit"
-        tcx_output = joinpath(this_dir, "$nm.tcx")
-        fit_to_tcx(path, tcx_output)
-        mv(tcx_output, tcx_path)
-    elseif ext == ".gz"
-        new_path = joinpath(this_dir, nm)
+    if isfile(tcx_path)
+        println("$tcx_path already exists, skipping.")
+        return nothing
+    end
+    try
+        if ext == ".tcx"
+            mv(path, joinpath(dir, bn))
+        elseif ext == ".fit"
+            tcx_output = joinpath(this_dir, "$nm.tcx")
+            fit_to_tcx(path, tcx_output)
+            mv(tcx_output, tcx_path)
+        elseif ext == ".gz"
+            new_path = joinpath(this_dir, nm)
 
-        GZip.open(path) do f
-            contents = read(f)
-            write(new_path, contents)
+            GZip.open(path) do f
+                contents = read(f)
+                write(new_path, contents)
+            end
+
+            process_file(new_path, dir)
+        else
+            @warn "cannot process file $(basename(path)). Unknown file extension"
         end
-
-        process_file(new_path, dir)
-    else
-        @warn "cannot process file $(basename(path)). Unknown file extension"
+    catch
+        failed_dir = joinpath(dir, "failed")
+        mkpath(failed_dir)
+        failed_path = joinpath(failed_dir, bn)
+        @warn "could not process file $bn. moving to $failed_path"
+        mv(path, failed_path, force = true)
     end
 
     return nothing
